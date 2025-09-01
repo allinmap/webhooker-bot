@@ -4,6 +4,9 @@ This is a Telegram bot system that receives webhook requests from various hosts 
 
 ## Architecture
 
+![architecture](image.png)
+
+
 - **Webhook Receiver**: Receives HTTP requests from different hosts
 - **Bot Backend**: Processes messages and sends them to Telegram
 - **Configuration**: Manages message templates and host mappings
