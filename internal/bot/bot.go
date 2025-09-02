@@ -57,8 +57,6 @@ func NewBot(cfg *config.Config) (*Bot, error) {
 
 func (b *Bot) SendMessage(chatId int64, text string) error {
 	msg := tgbotapi.NewMessage(chatId, text)
-	msg.ParseMode = "Markdown"
-
 	_, err := b.api.Send(msg)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
