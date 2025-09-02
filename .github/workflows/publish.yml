@@ -1,0 +1,71 @@
+name: Deploy Webhooker Bot to Digital Ocean
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
+
+      - name: Build application
+        run: go build -o webhooker-bot ./cmd/main.go
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/webhooker-bot:latest .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/webhooker-bot:latest
+
+      - name: Copy files to droplet
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "~/webhooker-bot"
+      - name: Execute deployment commands on droplet
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Pull the webhooker-bot Docker image
+            docker pull ${{ secrets.DOCKER_USERNAME }}/webhooker-bot:latest
+
+            # Stop and remove existing webhooker-bot container if it exists
+            if [ "$(docker ps -aq -f name=webhooker-bot)" ]; then
+                docker stop webhooker-bot
+                docker rm webhooker-bot
+            fi
+
+            # Run the webhooker-bot container on port 8081 (different from allinmap-backend on port 80)
+            docker run -d -p 8081:8080 \
+              --name webhooker-bot \
+              -e TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }} \
+              -e CHAT_IDS=${{ secrets.CHAT_IDS }} \
+              ${{ secrets.DOCKER_USERNAME }}/webhooker-bot:latest
+      - name: Print Docker Logs
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker ps
+            docker logs webhooker-bot
