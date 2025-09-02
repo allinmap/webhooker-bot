@@ -10,3 +10,10 @@ hosts:
       user_login: "User login: {{.username}}"
       error: "Backend error: {{.error}}"
       default: "Backend: {{.message}}"
+    
+  - name: "status-checker"
+    enabled: true
+    templates:
+      service_down: "Service {{.service_name}} is down!"
+      service_up: "Service {{.service_name}} is back up!"
+      default: "Status Checker: {{.message}}"
